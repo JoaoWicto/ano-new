@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Contagem para o Ano Novo — Feliz Ano Novo 🎆</title>
+  <meta name="description" content="Contagem regressiva com fogos, carousel e mensagem especial. Use o campo de teste com senha para simular a virada (senha: @123)">
+  <style>
+    :root{
+      --bg-1:#071023;
+      --bg-2:#0d1726;
+      --glass: rgba(255,255,255,0.04);
+      --accent-1:#ff6e40;
+      --accent-2:#ff8a65;
+      --muted: rgba(255,255,255,0.75);
+      --radius:12px;
+      --max-width:980px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;padding:24px;display:flex;flex-direction:column;align-items:center;gap:18px;
+      font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, Arial; color:#fff;
+      background: radial-gradient(circle at 10% 10%,var(--bg-1),var(--bg-2));
+      -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+    }
+    main{width:100%;max-width:var(--max-width)}
+    header{text-align:center}
+    header h1{margin:0;font-size:1.6rem}
+    .subtitle{color:var(--muted);margin-top:6px}
+
+    .countdown{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:10px}
+    .box{background:var(--glass);padding:12px 14px;border-radius:var(--radius);min-width:92px;text-align:center}
+    .box .num{font-size:2rem;font-weight:800;display:block}
+    .box .label{font-size:.85rem;color:var(--muted);margin-top:6px}
+
+    .controls{display:flex;gap:10px;justify-content:center;align-items:center;margin-top:8px;flex-wrap:wrap}
+    .input{padding:8px 10px;border-radius:10px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:#fff}
+    .btn{background:linear-gradient(135deg,var(--accent-1),var(--accent-2));border:0;color:#fff;padding:10px 16px;border-radius:999px;cursor:pointer;font-weight:700}
+    .btn.secondary{background:transparent;border:1px solid rgba(255,255,255,0.06)}
+
+    #content{display:none;margin-top:14px}
+    .card{background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));padding:16px;border-radius:var(--radius);box-shadow:0 8px 30px rgba(2,6,23,0.6)}
+    .grid{display:grid;gap:14px}
+    @media(min-width:760px){.grid{grid-template-columns:360px 1fr}}
+
+    .carousel{width:100%;height:260px;border-radius:12px;overflow:hidden;background:#000;position:relative}
+    .carousel img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .8s ease}
+    .carousel img.active{opacity:1}
+
+    #credits{height:260px;overflow:hidden;display:flex;align-items:flex-end}
+    .credits-inner{display:flex;flex-direction:column;align-items:center;gap:18px;padding:18px;transform:translateY(100%)}
+    .credits-inner p{margin:0;color:#fff;font-size:1.05rem;text-align:center}
+    @keyframes scrollCredits{from{transform:translateY(100%);opacity:0}30%{opacity:1}to{transform:translateY(-120%);opacity:0}}
+
+    #welcomeOverlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.8);z-index:60;color:#fff;font-size:4rem;font-weight:900}
+
+    canvas#fw{position:fixed;inset:0;pointer-events:none;z-index:50}
+
+  /* Vídeo em overlay */
+  #videoOverlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.75);z-index:80}
+  #videoOverlay.open{display:flex;animation:fadeIn .28s ease-out}
+  #videoOverlay.closing{animation:fadeOut .22s ease-in}
+  #videoOverlay .video-wrap{display:flex;flex-direction:column;align-items:center;gap:12px}
+  #videoOverlay video{max-width:92vw;max-height:86vh;border-radius:10px;background:#000}
+  @keyframes fadeIn{from{opacity:0;transform:scale(.995)}to{opacity:1;transform:scale(1)}}
+  @keyframes fadeOut{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(.995)}}
+
+    /* Accessible reduction */
+    @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+  </style>
+</head>
+<body>
+
+  <canvas id="fw" aria-hidden="true"></canvas>
+
+  <header role="banner">
+    <h1>Contagem para o Ano Novo 🎆</h1>
+    <div class="subtitle">Uma pequena surpresa para nossa virada</div>
+  </header>
+
+  <main>
+    <section class="countdown" aria-label="Contagem regressiva">
+      <div class="box" aria-live="polite"><span id="d" class="num">0</span><span class="label">Dias</span></div>
+      <div class="box" aria-live="polite"><span id="h" class="num">00</span><span class="label">Horas</span></div>
+      <div class="box" aria-live="polite"><span id="m" class="num">00</span><span class="label">Minutos</span></div>
+      <div class="box" aria-live="polite"><span id="s" class="num">00</span><span class="label">Segundos</span></div>
+    </section>
+
+    <div class="controls">
+      <input id="pw" class="input" type="password" placeholder="Senha de teste (pressione Enter)">
+      <button id="enableSound" class="btn secondary">Ativar som</button>
+      <div id="pwFeedback" aria-live="polite" style="color:var(--muted)"></div>
+    </div>
+
+    <div id="content" aria-hidden="true">
+      <div class="card grid">
+        <div>
+          <div class="carousel" aria-hidden="false">
+            <img src="img/img1.jpeg" alt="Foto 1" class="active">
+            <img src="img/img2.jpeg" alt="Foto 2">
+            <img src="img/img3.jpeg" alt="Foto 3">
+            <img src="img/img4.jpeg" alt="Foto 4">
+            <img src="img/img5.jpeg" alt="Foto 5">
+            <img src="img/img6.jpeg" alt="Foto 6">
+            <img src="img/img7.jpeg" alt="Foto 7">
+            <img src="img/img8.jpeg" alt="Foto 8">
+          </div>
+        </div>
+
+        <div>
+          <p style="font-weight:700;letter-spacing:0.6px">❤️ Amor ❤️</p>
+          <p style="color:var(--muted)">Obrigado por caminhar comigo e tornar minha vida mais leve. Que este novo ano venha cheio de amor e conquistas — juntos.</p>
+          <p style="margin-top:12px"><button id="egg" class="btn">🐚 Surpresa</button></p>
+
+          <div id="credits" aria-hidden="true">
+            <div class="credits-inner" id="creditsInner">
+              <p>Obrigado por caminhar comigo e tornar minha vida mais leve.</p>
+              <p>Você me mostrou um mundo novo e sempre esteve comigo nas pequenas e grandes coisas.</p>
+              <p>Que este ano seja incrível, tão incrível quanto nós imaginamos.</p>
+              <p>Sei que não vamos nos ver por um tempo, mas eu te amo hoje e sempre.</p>
+              <p>Obrigado por tudo — que venham mais sonhos, risos e conquistas juntos.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div id="videoOverlay" aria-hidden="true">
+    <div class="video-wrap">
+      <video id="secretVideo" src="mp4/foca.mp4" preload="auto" playsinline></video>
+      <button id="closeVideo" class="btn secondary" aria-label="Fechar vídeo">Fechar</button>
+    </div>
+  </div>
+
+  <div id="media" style="display:none">
+    <audio id="bgAudio" src="mp3/marina sena.mp3" preload="auto" loop></audio>
+  </div>
+
+  <div id="welcomeOverlay">BEM-VINDO 2026</div>
+
+  <script>
+  // ---------- Referências DOM
+  const dEl = document.getElementById('d');
+  const hEl = document.getElementById('h');
+  const mEl = document.getElementById('m');
+  const sEl = document.getElementById('s');
+  const content = document.getElementById('content');
+  const pwInput = document.getElementById('pw');
+  const pwFeedback = document.getElementById('pwFeedback');
+  const enableSoundBtn = document.getElementById('enableSound');
+  const bgAudio = document.getElementById('bgAudio');
+  const secretVideo = document.getElementById('secretVideo');
+  const eggBtn = document.getElementById('egg');
+  const creditsInner = document.getElementById('creditsInner');
+  const credits = document.getElementById('credits');
+  const welcomeOverlay = document.getElementById('welcomeOverlay');
+
+  // ---------- Config
+  const PASSWORD = '@123';
+  let carouselTimer = null;
+  let countdownTimer = null;
+  let finalCountdownActive = false;
+
+  // Target: próximo ano
+  let target = new Date(new Date().getFullYear() + 1, 0, 1);
+
+  // ---------- Util
+  const now = () => new Date();
+  function pad(n){ return String(n).padStart(2,'0') }
+
+  // --------- Contador
+  function updateCountdown(){
+    const diff = target - now();
+    if (diff <= 0){
+      dEl.textContent = '0'; hEl.textContent='00'; mEl.textContent='00'; sEl.textContent='00';
+      showContent();
+      stopCountdown();
+      return;
+    }
+    const days = Math.floor(diff/86400000);
+    const hours = Math.floor(diff/3600000) % 24;
+    const mins = Math.floor(diff/60000) % 60;
+    const secs = Math.floor(diff/1000) % 60;
+    dEl.textContent = days;
+    hEl.textContent = pad(hours);
+    mEl.textContent = pad(mins);
+    sEl.textContent = pad(secs);
+
+    // últimos 10s (overlay)
+    if (diff <= 10000 && !finalCountdownActive){
+      finalCountdownActive = true;
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.6);color:#fff;font-size:6rem;z-index:70';
+      document.body.appendChild(overlay);
+      let remaining = Math.ceil(diff/1000);
+      overlay.textContent = remaining;
+      const tick = setInterval(()=>{
+        remaining--; if (remaining>0) overlay.textContent = remaining; else { clearInterval(tick); overlay.remove(); finalCountdownActive=false }
+      },1000);
+    }
+  }
+  function startCountdown(){ stopCountdown(); updateCountdown(); countdownTimer = setInterval(updateCountdown,1000) }
+  function stopCountdown(){ if (countdownTimer){ clearInterval(countdownTimer); countdownTimer = null } }
+
+  // --------- Conteúdo da virada
+  let fireworksEnabled = true;
+  function showContent(){
+    content.style.display = 'block'; content.setAttribute('aria-hidden','false');
+    try{ bgAudio.volume = 0.9; bgAudio.play().catch(()=>{}); }catch(e){}
+    if (fireworksEnabled) startFireworks();
+    try{ credits.setAttribute('aria-hidden','false'); creditsInner.style.animation = 'scrollCredits 18s linear forwards';
+      setTimeout(()=>{ welcomeOverlay.style.display='flex'; setTimeout(()=> welcomeOverlay.style.display='none',6000) },18000);
+    }catch(e){}
+  }
+
+  // --------- Teste por senha
+  if (pwInput){
+    pwInput.addEventListener('keydown', (e)=>{
+      if (e.key === 'Enter'){
+        const v = (pwInput.value||'').trim();
+        if (v === PASSWORD){
+          pwFeedback.textContent = 'Senha correta — iniciando teste...';
+          pwInput.value = '';
+          stopCountdown();
+          showContent();
+        } else {
+          pwFeedback.textContent = 'Senha incorreta';
+          setTimeout(()=> pwFeedback.textContent = '',2000);
+        }
+      }
+    });
+  }
+
+  // Ativar som (usuário pode clicar para permitir autoplay)
+  enableSoundBtn.addEventListener('click', async ()=>{
+    try{ await bgAudio.play(); enableSoundBtn.textContent = 'Som ativado'; enableSoundBtn.disabled = true }catch(e){ enableSoundBtn.textContent = 'Clique novamente para permitir som' }
+  });
+
+  // --------- Carousel (5s)
+  const carouselImgs = Array.from(document.querySelectorAll('.carousel img'));
+  let cIndex = 0;
+  function startCarousel(){ if (carouselImgs.length<=1) return; stopCarousel(); carouselTimer = setInterval(()=>{ carouselImgs[cIndex].classList.remove('active'); cIndex=(cIndex+1)%carouselImgs.length; carouselImgs[cIndex].classList.add('active'); },5000) }
+  function stopCarousel(){ if (carouselTimer){ clearInterval(carouselTimer); carouselTimer = null } }
+  startCarousel();
+
+  // --------- Vídeo secreto (botão) — mostra em overlay
+  const videoOverlay = document.getElementById('videoOverlay');
+  const closeVideoBtn = document.getElementById('closeVideo');
+
+  async function openSecretVideo(){
+    try{ bgAudio.pause(); }catch(e){}
+    videoOverlay.classList.remove('closing');
+    videoOverlay.classList.add('open');
+    videoOverlay.setAttribute('aria-hidden','false');
+    try{
+      secretVideo.currentTime = 0; secretVideo.volume = 1;
+      await secretVideo.play();
+      // prefira fullscreen no overlay quando possível (alguns navegadores exigem interação)
+      try{
+        if (videoOverlay.requestFullscreen) await videoOverlay.requestFullscreen();
+        else if (secretVideo.requestFullscreen) await secretVideo.requestFullscreen();
+      }catch(e){ /* fullscreen pode falhar silenciosamente */ }
+    }catch(e){}
+  }
+  function closeSecretVideo(){
+    try{ secretVideo.pause(); }catch(e){}
+    // animação de saída: adiciona classe, espera término e então oculta
+    videoOverlay.classList.remove('open');
+    videoOverlay.classList.add('closing');
+    try{ if (document.fullscreenElement) document.exitFullscreen().catch(()=>{}); }catch(e){}
+    setTimeout(()=>{
+      try{ secretVideo.currentTime = 0; }catch(e){}
+      videoOverlay.classList.remove('closing');
+      videoOverlay.setAttribute('aria-hidden','true');
+      try{ bgAudio.play().catch(()=>{}); }catch(e){}
+    },240);
+  }
+
+  eggBtn.addEventListener('click', openSecretVideo);
+  closeVideoBtn.addEventListener('click', closeSecretVideo);
+  // fechar ao clicar fora do vídeo
+  videoOverlay.addEventListener('click', (ev)=>{ if (ev.target === videoOverlay) closeSecretVideo(); });
+  secretVideo.addEventListener('ended', ()=>{ closeSecretVideo(); });
+
+  // --------- Fireworks (DPR-aware)
+  const canvas = document.getElementById('fw');
+  const ctx = canvas.getContext('2d');
+  let DPR = Math.max(1, window.devicePixelRatio || 1);
+  function resizeCanvas(){ DPR = Math.max(1, window.devicePixelRatio || 1); canvas.width = Math.floor(window.innerWidth * DPR); canvas.height = Math.floor(window.innerHeight * DPR); canvas.style.width = window.innerWidth + 'px'; canvas.style.height = window.innerHeight + 'px'; ctx.setTransform(DPR,0,0,DPR,0,0); }
+  window.addEventListener('resize', resizeCanvas); resizeCanvas();
+
+  let particles = [];
+  let fwInterval = null;
+  function spawnFirework(){ const px = Math.random()*canvas.width/DPR; const py = Math.random()*(canvas.height/DPR)/2 + 40; const hue = Math.floor(Math.random()*360); const count = 30 + Math.floor(Math.random()*50); for(let i=0;i<count;i++){ const angle = Math.random()*Math.PI*2; const speed = 1 + Math.random()*4; particles.push({x:px,y:py,vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,life:60 + Math.random()*40,hue,alpha:1,size:1+Math.random()*2}); } }
+  function startFireworks(){ if (fwInterval) return; fwInterval = setInterval(spawnFirework,700); requestAnimationFrame(fwLoop); }
+  function stopFireworks(){ if (fwInterval){ clearInterval(fwInterval); fwInterval = null } }
+  function fwLoop(){ ctx.clearRect(0,0,canvas.width/DPR,canvas.height/DPR); particles = particles.filter(p=>p.life>0); particles.forEach(p=>{ p.x += p.vx; p.y += p.vy; p.vy += 0.02; p.life--; p.alpha = Math.max(0,p.life/100); ctx.fillStyle = `hsla(${p.hue},100%,60%,${p.alpha})`; ctx.fillRect(p.x,p.y,p.size,p.size); }); requestAnimationFrame(fwLoop); }
+
+  // visibilidade / redução de movimento
+  document.addEventListener('visibilitychange', ()=>{ if (document.hidden){ stopFireworks(); stopCarousel(); } else { if (fireworksEnabled) startFireworks(); startCarousel(); } });
+  if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches){ stopFireworks(); stopCarousel(); }
+
+  // iniciar contagem
+  startCountdown();
+  </script>
+
+</body>
+</html>
